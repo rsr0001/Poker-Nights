@@ -12,7 +12,7 @@ function render(){
  let body=`<div class="stats"><div class="stat"><small>Cash on the table</small><strong>${money(total())}</strong></div><div class="stat"><small>Total buy-ins</small><strong>${buys}</strong></div><div class="stat"><small>Players</small><strong>${game.players.length}</strong></div></div>`;
  body+=`<div class="section-head"><div><div class="eyebrow">${game.stage==='play'?'GAME IN PROGRESS':game.stage==='cashout'?'COUNT THE CHIPS':'NIGHT COMPLETE'}</div><h2 style="margin-top:7px">${game.stage==='play'?'The table':game.stage==='cashout'?'Cash out':'The results'}</h2></div>${game.stage==='play'?'<button class="secondary" data-action="add">+ Add player</button>':''}</div><p class="subtitle">${money(game.cash)} buys ${game.chips.toLocaleString()} chips${game.stage==='cashout'?' · Enter 0 for anyone who has no chips left.':''}</p>`;
  if(game.stage!=='settled'){
- body+=game.players.map((p,i)=>`<div class="player"><div class="avatar">${String(i+1).padStart(2,'0')}</div><div class="player-main"><input class="name" aria-label="Player ${i+1} name" maxlength="40" value="${esc(p.name)}" data-name="${p.id}"><div class="meta">${money(p.buys*game.cash)} in · ${p.buys} buy-in${p.buys===1?'':'s'}</div></div>${game.stage==='play'?`<button class="mini" aria-label="Undo buy-in for ${esc(p.name)}" data-action="undo" data-id="${p.id}" ${p.buys<=1?'disabled':''}>−</button><button class="buy" data-action="buy" data-id="${p.id}">+ ${money(game.cash)}</button>`:`<label>Final chips<input class="chips" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" placeholder="0" value="${esc(p.chips??'')}" data-chips="${p.id}"></label>`}</div>`).join('');
+ body+=game.players.map((p,i)=>`<div class="player"><div class="avatar">${String(i+1).padStart(2,'0')}</div><div class="player-main"><input class="name" aria-label="Player ${i+1} name" maxlength="40" value="${esc(p.name)}" data-name="${p.id}"><div class="meta">${money(p.buys*game.cash)} in · ${p.buys} buy-in${p.buys===1?'':'s'}</div></div>${game.stage==='play'?`<button class="mini" aria-label="Undo buy-in for ${esc(p.name)}" data-action="undo" data-id="${p.id}" ${p.buys<=1?'disabled':''}>−</button><button class="buy" data-action="buy" data-id="${p.id}">+ ${money(game.cash)}</button><button class="mini danger" aria-label="Remove ${esc(p.name)} from this game" data-action="remove" data-id="${p.id}">×</button>`:`<label>Final chips<input class="chips" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" placeholder="0" value="${esc(p.chips??'')}" data-chips="${p.id}"></label>`}</div>`).join('');
  body+=`<p id="error" role="alert"></p>${game.stage==='play'?'<button class="wide" data-action="end">End game & count chips →</button>':'<section class="panel"><label>Settle payments to nearest<select id="round"><option value="1">$0.01 — exact cents</option><option value="5">$0.05</option><option value="25">$0.25</option><option value="100">$1.00</option></select></label><p class="subtitle" style="margin-top:12px">Rounding is shared across payouts so the total stays balanced.</p><button class="wide" data-action="settle">Calculate settlement →</button><button class="secondary wide" data-action="back">Back to the table</button></section>'}`;
  }else{
  const r=Poker.calculate(game,game.unit);
@@ -27,6 +27,7 @@ app.addEventListener('input',e=>{if(!game)return;const name=e.target.dataset.nam
 app.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action,p=game?.players.find(p=>p.id===b.dataset.id);
  if(action==='buy')p.buys++;
  if(action==='undo'){confirmAction('Undo a buy-in?',`Remove one ${money(game.cash)} buy-in from ${p.name}?`,()=>{p.buys--;save();render();});return;}
+ if(action==='remove'){if(game.players.length<=1){alert('Keep at least one player at the table.');return;}confirmAction('Remove this player?',`Remove ${p.name} and their ${money(p.buys*game.cash)} in buy-ins from this game? This does not change your saved group.`,()=>{game.players=game.players.filter(player=>player.id!==p.id);save();render();});return;}
  if(action==='add'){if(game.players.length>=50){alert('This table supports up to 50 players.');return;}game.players.push({id:crypto.randomUUID(),name:`Player ${game.players.length+1}`,buys:1,chips:''});}
  if(action==='end')game.stage='cashout';
  if(action==='back')game.stage='play';
@@ -47,3 +48,11 @@ app.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b
 });
 render();if(!storageOK)document.querySelector('#save').textContent='Save unavailable · download backup';
 window.addEventListener('storage',e=>{if(e.key===KEY){try{game=JSON.parse(e.newValue);render();}catch{}}});
+window.PokerGame = {
+ snapshot: () => game ? {cash:game.cash,chips:game.chips,players:game.players.map(p=>p.name)} : null,
+ startFromGroup(group) {
+  const start=()=>{game={cash:group.cash,chips:group.chips,stage:'play',created:new Date().toISOString(),players:group.players.map(name=>({id:crypto.randomUUID(),name,buys:1,chips:''}))};save();render();document.querySelector('#app').scrollIntoView({behavior:'smooth'});};
+  if(game)confirmAction('Start a game from this group?','This replaces the current game. Download a backup first if you want to keep it. Your saved group stays unchanged.',start);
+  else start();
+ }
+};
