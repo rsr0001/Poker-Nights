@@ -14,6 +14,12 @@ Run `python3 -m http.server 8000` in this folder, then open http://localhost:800
 
 Games save in localStorage in the same browser on the same device, with no app-imposed expiry. Browser data clearing, private browsing, or storage eviction can remove them. Download a JSON backup to keep a game; use Restore backup to load it. Games do not synchronize across devices. Buy-ins paid to a central pot should be cashed out from that pot; peer transfers are for games where cash has not already been collected.
 
+## Home-screen app and updates
+
+On iPhone/iPad, open the website in Safari, choose Share → Add to Home Screen, enable Open as Web App if shown, and tap Add. On Android, open it in Chrome and use Add to home screen / Install app. The app uses the same website and opens in its own window with a Poker Nights icon. On some platforms the installed app has separate browser storage; download a game backup before installing and restore it in the installed app if needed.
+
+The first online visit caches the guest app for offline play. Google sign-in and synced groups require a connection. Updates are checked when the app opens, regains focus, reconnects, and every 15 minutes while visible. A new release shows a refresh prompt; **Refresh app** activates the downloaded update and reloads without clearing game storage. Updates never forcibly reload an active table. Before publishing frontend changes, bump the release in `sw.js`, its asset list, and HTML asset versions together so a complete release can be cached before activation.
+
 ## Optional accounts and saved groups
 
 Sign in with Google to create named groups with player names and usual buy-in settings. Groups sync across devices. Starting a game copies the saved group: adding/removing players or changing game names does not edit the group. Game history is not uploaded. Chip-count input arrows remain at one chip.
