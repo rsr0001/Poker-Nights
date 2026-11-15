@@ -40,7 +40,7 @@ app.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b
   if(names.some(n=>!n)||new Set(names).size!==names.length){document.querySelector('#error').textContent='Give each player a different, nonempty name.';return;}
   if(game.players.some(p=>p.chips===''||!Number.isSafeInteger(Number(p.chips))||Number(p.chips)<0||Number(p.chips)>1e12)){document.querySelector('#error').textContent='Enter a whole chip count for every player (0 is allowed).';return;}
   game.unit=Number(document.querySelector('#round').value);let result;try{result=Poker.calculate(game,game.unit);}catch(err){document.querySelector('#error').textContent=err.message;return;}
-  const finish=()=>{game.stage='settled';save();render();};
+  const finish=()=>{game.stage='settled';game.gameId ||= crypto.randomUUID();game.completedAt ||= new Date().toISOString();save();render();window.dispatchEvent(new CustomEvent('poker:completed',{detail:window.PokerGame.completed()}));};
   const expected=game.players.reduce((s,p)=>s+p.buys*game.chips,0),returned=game.players.reduce((s,p)=>s+Number(p.chips),0);
   if(expected!==returned){const difference=returned-expected;confirmAction('The chips don’t balance',`${Math.abs(difference).toLocaleString()} ${difference>0?'extra':'missing'} chips (${money(Math.abs(result.rawTotal-result.total))}). Check the counts first. Confirm to ${difference>0?'deduct the excess payout from the biggest winner first':'give the unclaimed cash to the biggest winner'}.`,finish);return;}finish();return;
  }
@@ -49,9 +49,10 @@ app.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b
 render();if(!storageOK)document.querySelector('#save').textContent='Save unavailable · download backup';
 window.addEventListener('storage',e=>{if(e.key===KEY){try{game=JSON.parse(e.newValue);render();}catch{}}});
 window.PokerGame = {
+ completed() {if(game?.stage!=='settled')return null;game.gameId ||= crypto.randomUUID();game.completedAt ||= new Date().toISOString();save();return {id:game.gameId,title:game.groupName || 'Poker night',created:game.created,completedAt:game.completedAt,cash:game.cash,chips:game.chips,unit:game.unit||1,players:game.players.map(p=>({name:p.name,buys:p.buys,chips:Number(p.chips)}))};},
  snapshot: () => game ? {cash:game.cash,chips:game.chips,players:game.players.map(p=>p.name)} : null,
  startFromGroup(group) {
-  const start=()=>{game={cash:group.cash,chips:group.chips,stage:'play',created:new Date().toISOString(),players:group.players.map(name=>({id:crypto.randomUUID(),name,buys:1,chips:''}))};save();render();document.querySelector('#app').scrollIntoView({behavior:'smooth'});};
+  const start=()=>{game={groupName:group.name,cash:group.cash,chips:group.chips,stage:'play',created:new Date().toISOString(),players:group.players.map(name=>({id:crypto.randomUUID(),name,buys:1,chips:''}))};save();render();document.querySelector('#app').scrollIntoView({behavior:'smooth'});};
   if(game)confirmAction('Start a game from this group?','This replaces the current game. Download a backup first if you want to keep it. Your saved group stays unchanged.',start);
   else start();
  }

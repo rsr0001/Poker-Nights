@@ -1,6 +1,7 @@
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { completedGame } from './history.js';
 
 export const hash = value => createHash('sha256').update(value).digest('hex');
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -116,6 +117,29 @@ export function createApp({ pool, clientId, origin, verifyGoogle }) {
     const result = await pool.query('DELETE FROM groups WHERE id=$1 AND user_id=$2', [req.params.id,req.user.id]);
     if (!result.rowCount) return res.status(404).json({ error: 'Group not found.' });
     res.sendStatus(204);
+  });
+  app.get('/history', async (req, res) => {
+    const offset=Number(req.query.offset || 0);
+    if (!Number.isSafeInteger(offset)||offset<0||offset>1000000) return res.status(400).json({error:'Invalid page.'});
+    const result=await pool.query(`SELECT game_id AS id,title,completed_at,total,player_count FROM game_history
+      WHERE user_id=$1 ORDER BY completed_at DESC,game_id DESC LIMIT 21 OFFSET $2`,[req.user.id,offset]);
+    res.json({games:result.rows.slice(0,20),hasMore:result.rows.length>20});
+  });
+  app.get('/history/:id', async (req,res) => {
+    if (!uuid.test(req.params.id)) return res.status(404).json({error:'Game not found.'});
+    const result=await pool.query('SELECT game_id AS id,snapshot,result,updated_at FROM game_history WHERE user_id=$1 AND game_id=$2',[req.user.id,req.params.id]);
+    if(!result.rowCount)return res.status(404).json({error:'Game not found.'});
+    res.json({game:result.rows[0]});
+  });
+  app.put('/history/:id', async (req,res) => {
+    if (!uuid.test(req.params.id)) return res.status(400).json({error:'Invalid game ID.'});
+    const {game,result}=completedGame(req.body);
+    await pool.query(`INSERT INTO game_history(user_id,game_id,title,completed_at,total,player_count,snapshot,result)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(user_id,game_id) DO UPDATE SET
+      title=excluded.title,completed_at=excluded.completed_at,total=excluded.total,player_count=excluded.player_count,
+      snapshot=excluded.snapshot,result=excluded.result,updated_at=now()`,
+      [req.user.id,req.params.id,game.title,game.completedAt,result.total,game.players.length,JSON.stringify(game),JSON.stringify(result)]);
+    res.json({saved:true,id:req.params.id});
   });
   app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
   app.use((error, req, res, next) => {

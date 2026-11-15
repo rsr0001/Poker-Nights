@@ -24,3 +24,16 @@ CREATE TABLE IF NOT EXISTS groups (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS groups_owner ON groups(user_id);
+CREATE TABLE IF NOT EXISTS game_history (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  game_id uuid NOT NULL,
+  title text NOT NULL CHECK (length(title) BETWEEN 1 AND 80),
+  completed_at timestamptz NOT NULL,
+  total bigint NOT NULL CHECK (total > 0),
+  player_count integer NOT NULL CHECK (player_count BETWEEN 1 AND 50),
+  snapshot jsonb NOT NULL,
+  result jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id,game_id)
+);
+CREATE INDEX IF NOT EXISTS history_owner_date ON game_history(user_id,completed_at DESC,game_id DESC);

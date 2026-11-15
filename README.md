@@ -22,7 +22,7 @@ The first online visit caches the guest app for offline play. Google sign-in and
 
 ## Optional accounts and saved groups
 
-Sign in with Google to create named groups with player names and usual buy-in settings. Groups sync across devices. Starting a game copies the saved group: adding/removing players or changing game names does not edit the group. Game history is not uploaded. Chip-count input arrows remain at one chip.
+Sign in with Google to create named groups with player names and usual buy-in settings. Groups sync across devices. Starting a game copies the saved group: adding/removing players or changing game names does not edit the group. Completed games save to the signed-in account with their player investments, cash-outs, profit/loss, chip/rounding adjustments, and suggested transfers. Active games remain local. Chip-count input arrows remain at one chip.
 
 The API is https://pokernights.duckdns.org. It validates Google ID token signatures, audience, issuer and expiry using Google's library and consumes a server-generated nonce once. Identity uses Google's stable `sub`, never a browser-supplied email. Random 12-hour session tokens are stored in the browser tab's sessionStorage; only their hashes are stored server-side. Logout revokes the session. JSON requests use bearer authorization and an exact allowed origin, avoiding cross-site cookies between GitHub Pages and DuckDNS.
 
@@ -31,11 +31,11 @@ Google Auth Platform needs a Web application OAuth client with authorized JavaSc
 ## VPS operations
 
 - API: `/opt/pokernights`, systemd unit `pokernights.service`, Linux user `pokernights`, bound to `127.0.0.1:5010`.
-- PostgreSQL database and restricted role: `pokernights`, using local Unix-socket peer authentication, with no database password. Database tables store accounts, hashed sessions, temporary nonces, and user-owned groups.
+- PostgreSQL database and restricted role: `pokernights`, using local Unix-socket peer authentication, with no database password. Database tables store accounts, hashed sessions, temporary nonces, user-owned groups, and completed game history.
 - Nginx host: `/etc/nginx/sites-available/pokernights.duckdns.org`; HTTPS certificate managed by Certbot and its existing renewal timer.
 - Configuration: `/etc/pokernights/api.env`, readable only by root and the poker group. Do not commit environment files, tokens, keys or database backups.
 - Check: `systemctl status pokernights`, `journalctl -u pokernights`, and `curl -fsS https://pokernights.duckdns.org/health`.
-- Before application updates, make a root-only `pg_dump` of the poker database. Copy changed API files into `/opt/pokernights`, preserving root ownership and poker group read access; run `npm ci --omit=dev --ignore-scripts`, apply any reviewed additive schema changes as the poker user, and restart only `pokernights.service`.
+- Before application updates, make a root-only `pg_dump` of the poker database. Copy changed API files into `/opt/pokernights/backend` and the shared `settlement.js` into `/opt/pokernights`, preserving root ownership and poker group read access; run `npm ci --omit=dev --ignore-scripts`, run dependency commands from the backend directory, apply any reviewed additive schema changes as the poker user, and restart only `pokernights.service`.
 - `backend/deploy.sh` documents the initial installation and refuses to overwrite an existing deployment. Do not rerun it for updates. It backs up Nginx before installation and verifies cricket virtual-host hashes and cricket service process identity afterward.
 - Preserve cricket databases, runtimes, services, and virtual hosts. Always run `nginx -t` before a shared Nginx reload.
 
@@ -44,3 +44,11 @@ Google Auth Platform needs a Web application OAuth client with authorized JavaSc
 Guest settlement tests: `node --test settlement.test.js`.
 
 Install test dependencies with `cd backend && npm ci --ignore-scripts`, then run `npm test` for API input validation and frontend DOM regression tests. The real PostgreSQL integration suite runs only when `TEST_DATABASE_URL` is supplied; it creates uniquely named disposable test accounts, exercises nonce replay rejection, sessions, group ownership and logout, then removes its test data. It injects a verifier into the test app; the production server always uses Google's verifier. It does not substitute for testing a real Google login in the published frontend.
+
+## Completed game history
+
+Signed-in games save automatically after settlement is calculated and any chip mismatch is confirmed. Open Past games below the current table to see a night’s date, players, total pot, buy-ins, final chip counts, cash-outs, profit/loss, adjustments, and suggested transfers. These are calculated payouts, not payment confirmations. Recounting updates the same game instead of duplicating it. Older games load in pages of 20.
+
+If offline, completed games queue in localStorage under the account ID, then retry when the same account reconnects or signs in again. Pending games never upload to another account. Keep a JSON backup before clearing browser data. A completed game already on this device can be added explicitly with Save completed game; guest games are not automatically uploaded on sign-in.
+
+The API recomputes every settlement with the shared settlement.js and scopes history queries to the authenticated account. The game_history table is an additive migration in backend/schema.sql. The API now runs from /opt/pokernights/backend so its source layout matches the repository; the original flat installation is retained for rollback.

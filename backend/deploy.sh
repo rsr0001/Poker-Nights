@@ -4,6 +4,7 @@ umask 027
 DOMAIN=pokernights.duckdns.org
 SOURCE=/root/pokernights-upload
 test -f "$SOURCE/backend/server.js"
+test -f "$SOURCE/settlement.js"
 test ! -e /etc/nginx/sites-available/$DOMAIN
 test ! -e /etc/nginx/sites-enabled/$DOMAIN
 test ! -e /opt/pokernights
@@ -19,16 +20,17 @@ sudo -u postgres psql -Atc 'SELECT datname, pg_get_userbyid(datdba) FROM pg_data
 if id pokernights >/dev/null 2>&1; then echo 'Existing poker account; inspect before continuing'; exit 1; fi
 if sudo -u postgres psql -Atc "SELECT 1 FROM pg_roles WHERE rolname='pokernights'" | grep -q 1; then echo 'Existing poker role; stopped'; exit 1; fi
 useradd --system --home-dir /opt/pokernights --shell /usr/sbin/nologin pokernights
-install -d -o root -g pokernights -m 750 /opt/pokernights /etc/pokernights
-cp "$SOURCE/backend/"{app.js,server.js,app.test.js,schema.sql,package.json,package-lock.json} /opt/pokernights/
-cd /opt/pokernights
+install -d -o root -g pokernights -m 750 /opt/pokernights /opt/pokernights/backend /etc/pokernights
+cp "$SOURCE/backend/"{app.js,history.js,server.js,app.test.js,schema.sql,package.json,package-lock.json} /opt/pokernights/backend/
+cp "$SOURCE/settlement.js" /opt/pokernights/settlement.js
+cd /opt/pokernights/backend
 npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 chown -R root:pokernights /opt/pokernights
 chmod -R g+rX,o-rwx /opt/pokernights
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'CREATE ROLE pokernights LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION'
 sudo -u postgres createdb --owner=pokernights pokernights
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'REVOKE ALL ON DATABASE pokernights FROM PUBLIC'
-sudo -u pokernights psql -v ON_ERROR_STOP=1 -d pokernights -f /opt/pokernights/schema.sql
+sudo -u pokernights psql -v ON_ERROR_STOP=1 -d pokernights -f /opt/pokernights/backend/schema.sql
 cat > /etc/pokernights/api.env <<'ENV'
 NODE_ENV=production
 PORT=5010
@@ -49,9 +51,9 @@ Wants=postgresql@16-main.service
 Type=simple
 User=pokernights
 Group=pokernights
-WorkingDirectory=/opt/pokernights
+WorkingDirectory=/opt/pokernights/backend
 EnvironmentFile=/etc/pokernights/api.env
-ExecStart=/usr/bin/node /opt/pokernights/server.js
+ExecStart=/usr/bin/node /opt/pokernights/backend/server.js
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
@@ -69,7 +71,7 @@ CPUQuota=50%
 [Install]
 WantedBy=multi-user.target
 UNIT
-sudo -u pokernights env 'TEST_DATABASE_URL=postgresql://pokernights@localhost/pokernights?host=/var/run/postgresql' node --test /opt/pokernights/app.test.js
+sudo -u pokernights env 'TEST_DATABASE_URL=postgresql://pokernights@localhost/pokernights?host=/var/run/postgresql' node --test /opt/pokernights/backend/app.test.js
 install -d -m 755 /var/www/pokernights/.well-known/acme-challenge
 cat > /etc/nginx/sites-available/$DOMAIN <<'NGINX'
 server {

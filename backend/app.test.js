@@ -64,6 +64,26 @@ test('real database: Google challenges, sessions, groups, and account isolation'
       assert.equal((await request('/groups/'+group.id,{method:'PUT',body:{...body,players:['Alex','alex']},token:alice})).status,400);
       assert.equal((await request('/groups/'+group.id,{method:'DELETE',token:alice})).status,204);
     });
+    await t.test('history recomputes payouts, upserts recounts, paginates, and isolates accounts',async()=>{
+      const id=randomUUID(),now=new Date().toISOString();
+      const game={title:'Friday table',cash:2000,chips:10000,unit:1,created:now,completedAt:now,players:[{name:'Alex',buys:1,chips:15000},{name:'Sam',buys:1,chips:5000}],result:{total:1}};
+      assert.equal((await request('/history/'+id,{method:'PUT',body:game,token:alice})).status,200);
+      const saved=(await request('/history/'+id,{token:alice})).data.game;
+      assert.equal(saved.result.total,4000);assert.equal(saved.result.rows[0].payout,3000);
+      assert.deepEqual(saved.result.transfers,[{from:'Sam',to:'Alex',amount:1000}]);
+      assert.equal((await request('/history/'+id,{token:bob})).status,404);
+      assert.deepEqual((await request('/history',{token:bob})).data.games,[]);
+      assert.equal((await request('/history/'+id,{method:'PUT',body:{...game,players:[{name:'Alex',buys:1,chips:10000},{name:'Sam',buys:1,chips:10000}]},token:alice})).status,200);
+      assert.equal((await request('/history',{token:alice})).data.games.length,1);
+      assert.equal((await request('/history/'+id,{token:alice})).data.game.result.rows[0].payout,2000);
+      assert.equal((await request('/history/'+id,{method:'PUT',body:{...game,players:[]},token:alice})).status,400);
+      assert.equal((await request('/history?offset=bad',{token:alice})).status,400);
+      const owner=(await request('/me',{token:alice})).data.user.id;
+      for(let i=0;i<21;i++)await pool.query('INSERT INTO game_history(user_id,game_id,title,completed_at,total,player_count,snapshot,result) VALUES($1,$2,$3,now(),4000,2,$4,$5)',[owner,randomUUID(),'test page',JSON.stringify(game),JSON.stringify(saved.result)]);
+      const page=(await request('/history',{token:alice})).data;
+      assert.equal(page.games.length,20);assert.equal(page.hasMore,true);
+      assert.equal((await request('/history?offset=20',{token:alice})).data.games.length,2);
+    });
     await t.test('logout invalidates server session and expired sessions fail',async()=>{
       assert.equal((await request('/auth/logout',{method:'POST',body:{},token:alice})).status,204);
       assert.equal((await request('/me',{token:alice})).status,401);
