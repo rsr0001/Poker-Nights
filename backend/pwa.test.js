@@ -27,7 +27,7 @@ test('worker caches only app assets and leaves API, Google, and unrelated sites 
  const handlers={},scope='https://rsr0001.github.io/Poker-Nights/';
  const cacheResponse={body:'cached guest shell'};
  let activated=false,claimed=false;const removed=[];
- const context={URL,self:{registration:{scope},location:{origin:'https://rsr0001.github.io'},addEventListener:(event,fn)=>handlers[event]=fn,skipWaiting:()=>{activated=true;},clients:{claim:async()=>{claimed=true;}}},caches:{open:async()=>({match:async()=>cacheResponse}),keys:async()=>['another-project','poker-nights-old','poker-nights-history-1'],delete:async key=>removed.push(key)},fetch:()=>{throw Error('network unavailable');}};
+ const context={URL,self:{registration:{scope},location:{origin:'https://rsr0001.github.io'},addEventListener:(event,fn)=>handlers[event]=fn,skipWaiting:()=>{activated=true;},clients:{claim:async()=>{claimed=true;}}},caches:{open:async()=>({match:async()=>cacheResponse}),keys:async()=>['another-project','poker-nights-old','poker-nights-shell-1'],delete:async key=>removed.push(key)},fetch:()=>{throw Error('network unavailable');}};
  vm.runInNewContext(await read('sw.js'),context);
  for(const url of ['https://pokernights.duckdns.org/groups','https://accounts.google.com/gsi/client','https://rsr0001.github.io/Other/','https://rsr0001.github.io/Poker-Nights/README.md']){
   let intercepted=false;handlers.fetch({request:{url,method:'GET',mode:'cors'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

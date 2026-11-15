@@ -1,6 +1,6 @@
 /* Bump the release when changing any cached frontend file. */
-const CACHE = 'poker-nights-history-1';
-const ASSETS = ['./', './index.html', './style.css?v=history-1', './settlement.js?v=history-1', './app.js?v=history-1', './history.js?v=history-1', './groups.js?v=history-1', './pwa.js?v=history-1', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const CACHE = 'poker-nights-shell-1';
+const ASSETS = ['./', './index.html', './style.css?v=shell-1', './settlement.js?v=shell-1', './app.js?v=shell-1', './history.js?v=shell-1', './groups.js?v=shell-1', './shell.js?v=shell-1', './pwa.js?v=shell-1', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const urls = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));

@@ -52,7 +52,7 @@ window.PokerGame = {
  completed() {if(game?.stage!=='settled')return null;game.gameId ||= crypto.randomUUID();game.completedAt ||= new Date().toISOString();save();return {id:game.gameId,title:game.groupName || 'Poker night',created:game.created,completedAt:game.completedAt,cash:game.cash,chips:game.chips,unit:game.unit||1,players:game.players.map(p=>({name:p.name,buys:p.buys,chips:Number(p.chips)}))};},
  snapshot: () => game ? {cash:game.cash,chips:game.chips,players:game.players.map(p=>p.name)} : null,
  startFromGroup(group) {
-  const start=()=>{game={groupName:group.name,cash:group.cash,chips:group.chips,stage:'play',created:new Date().toISOString(),players:group.players.map(name=>({id:crypto.randomUUID(),name,buys:1,chips:''}))};save();render();document.querySelector('#app').scrollIntoView({behavior:'smooth'});};
+  const start=()=>{game={groupName:group.name,cash:group.cash,chips:group.chips,stage:'play',created:new Date().toISOString(),players:group.players.map(name=>({id:crypto.randomUUID(),name,buys:1,chips:''}))};save();render();window.dispatchEvent(new Event('poker:game-started'));document.querySelector('#app').scrollIntoView({behavior:'smooth'});};
   if(game)confirmAction('Start a game from this group?','This replaces the current game. Download a backup first if you want to keep it. Your saved group stays unchanged.',start);
   else start();
  }

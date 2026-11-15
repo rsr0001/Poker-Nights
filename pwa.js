@@ -4,7 +4,8 @@
   bar.className = 'app-tools';
   bar.setAttribute('aria-label', 'App installation and updates');
   bar.innerHTML = '<div class="actions"><button type="button" class="secondary" id="install-app">Add to home screen</button><button type="button" class="secondary" id="refresh-app">Refresh app</button></div><p id="app-update-status" role="status" aria-live="polite"></p>';
-  document.querySelector('footer').before(bar);
+  const settings=document.querySelector('#app-settings');
+  if(settings)settings.append(bar);else document.querySelector('footer').before(bar);
   const install = bar.querySelector('#install-app');
   const refresh = bar.querySelector('#refresh-app');
   const status = bar.querySelector('#app-update-status');
@@ -24,7 +25,7 @@
     }
   });
   const offerUpdate = () => {
-    if (registration?.waiting) { status.textContent = 'A new version is ready. Tap Refresh app to update. Your saved game stays on this device.'; refresh.textContent = 'Refresh to update'; }
+    if (registration?.waiting) { status.textContent = 'A new version is ready. Tap Refresh app to update. Your saved game stays on this device.'; refresh.textContent = 'Refresh to update'; document.querySelector('[data-view=settings]')?.classList.add('update-ready'); }
   };
   async function checkUpdates() {
     if (registration && navigator.onLine) { await registration.update(); offerUpdate(); }

@@ -21,6 +21,7 @@
   return data;
  }
  function draw() {
+  window.dispatchEvent(new CustomEvent('poker:account-change',{detail:user}));
   window.PokerHistory?.setAccount(user,api);
   if(!user){
    root.innerHTML='<h2>Your regular table, ready to go</h2><p class="subtitle">Guest games always work. Sign in to save player groups and completed game history across devices.</p><div id="google-signin"></div><button class="secondary" data-account="signin">Sign in with Google</button><p class="account-status" role="status" aria-live="polite"></p>';
@@ -84,5 +85,6 @@
   finally{busy=false;form.querySelector('button').disabled=false;}
  });
  draw();
+ window.addEventListener('poker:account-request',()=>window.dispatchEvent(new CustomEvent('poker:account-change',{detail:user})));
  (async()=>{try{config=await api('/config');if(token){user=(await api('/me')).user;groups=(await api('/groups')).groups;}draw();}catch(error){message('Saved groups are unavailable right now. Guest games still work. '+error.message);}})();
 })();

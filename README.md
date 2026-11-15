@@ -16,6 +16,8 @@ Games save in localStorage in the same browser on the same device, with no app-i
 
 ## Home-screen app and updates
 
+Use **Table** for the current game, **Groups** for account sign-in and saved players, **History** for completed nights, and **App** for installation and refresh controls. Desktop uses a sidebar; phones use fixed bottom navigation. Switching views preserves the current game and draft forms. Starting a saved group returns to Table. Browser Back/Forward follows view navigation.
+
 On iPhone/iPad, open the website in Safari, choose Share → Add to Home Screen, enable Open as Web App if shown, and tap Add. On Android, open it in Chrome and use Add to home screen / Install app. The app uses the same website and opens in its own window with a Poker Nights icon. On some platforms the installed app has separate browser storage; download a game backup before installing and restore it in the installed app if needed.
 
 The first online visit caches the guest app for offline play. Google sign-in and synced groups require a connection. Updates are checked when the app opens, regains focus, reconnects, and every 15 minutes while visible. A new release shows a refresh prompt; **Refresh app** activates the downloaded update and reloads without clearing game storage. Updates never forcibly reload an active table. Before publishing frontend changes, bump the release in `sw.js`, its asset list, and HTML asset versions together so a complete release can be cached before activation.
